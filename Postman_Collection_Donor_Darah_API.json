@@ -1,0 +1,1206 @@
+{
+	"info": {
+		"_postman_id": "donor-darah-api-collection",
+		"name": "Donor Darah API - PMI",
+		"description": "API Documentation for Blood Donor Decision Support System using MOORA method",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{authToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "authToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "adminId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "petugasId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "eventId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "donorId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Login Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('authToken', response.data.token);",
+									"    pm.environment.set('adminId', response.data.user.id);",
+									"    console.log('Token saved:', response.data.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@pmi.com\",\n  \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Login as admin user. Default credentials: admin@pmi.com / admin123"
+					},
+					"response": []
+				},
+				{
+					"name": "Login Petugas",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('authToken', response.data.token);",
+									"    pm.environment.set('petugasId', response.data.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"petugas1@pmi.com\",\n  \"password\": \"petugas123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Login as petugas user. Default credentials: petugas1@pmi.com / petugas123"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "me"]
+						},
+						"description": "Get current authenticated user profile"
+					},
+					"response": []
+				},
+				{
+					"name": "Register New User (Admin Only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"petugas3@pmi.com\",\n  \"password\": \"petugas123\",\n  \"fullName\": \"Petugas PMI 3\",\n  \"role\": \"petugas\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "register"]
+						},
+						"description": "Register new user (admin or petugas). Admin only."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Admin - Petugas Management",
+			"item": [
+				{
+					"name": "Get All Petugas",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/petugas",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "petugas"]
+						},
+						"description": "Get list of all petugas users"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Petugas by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/petugas/{{petugasId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "petugas", "{{petugasId}}"]
+						},
+						"description": "Get petugas detail by ID (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Petugas",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Updated Name\",\n  \"email\": \"updated@pmi.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/petugas/{{petugasId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "petugas", "{{petugasId}}"]
+						},
+						"description": "Update petugas information (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Petugas",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/petugas/{{petugasId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "petugas", "{{petugasId}}"]
+						},
+						"description": "Delete petugas (Not implemented yet)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Admin - Criteria Management",
+			"item": [
+				{
+					"name": "Get All Criteria",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/criteria",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "criteria"]
+						},
+						"description": "Get all criteria with sub-criteria"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Criteria by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/criteria/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "criteria", "1"]
+						},
+						"description": "Get criteria detail (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Criteria",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"C8\",\n  \"name\": \"New Criteria\",\n  \"type\": \"benefit\",\n  \"weight\": 0.05\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/criteria",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "criteria"]
+						},
+						"description": "Create new criteria (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Criteria",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Criteria Name\",\n  \"weight\": 0.30\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/criteria/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "criteria", "1"]
+						},
+						"description": "Update criteria (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Criteria",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/criteria/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "criteria", "1"]
+						},
+						"description": "Delete criteria (Not implemented yet)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Admin - Event Management",
+			"item": [
+				{
+					"name": "Get All Events",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/events",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "events"]
+						},
+						"description": "Get list of all events"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/events/{{eventId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "events", "{{eventId}}"]
+						},
+						"description": "Get event detail (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('eventId', response.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Donor Darah Kampus XYZ\",\n  \"location\": \"Gedung Serbaguna Kampus XYZ\",\n  \"startDate\": \"2024-11-01T08:00:00Z\",\n  \"endDate\": \"2024-11-01T16:00:00Z\",\n  \"status\": \"draft\",\n  \"description\": \"Event donor darah di kampus XYZ\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/events",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "events"]
+						},
+						"description": "Create new event (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Event",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Event Name\",\n  \"location\": \"Updated Location\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/events/{{eventId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "events", "{{eventId}}"]
+						},
+						"description": "Update event (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Event Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/events/{{eventId}}/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "events", "{{eventId}}", "status"]
+						},
+						"description": "Update event status: draft → active → completed (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Event",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/events/{{eventId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "events", "{{eventId}}"]
+						},
+						"description": "Delete event (Not implemented yet)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Admin - Event Officer Assignment",
+			"item": [
+				{
+					"name": "Get Event Officers",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/events/{{eventId}}/officers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "events", "{{eventId}}", "officers"]
+						},
+						"description": "Get list of officers assigned to event (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Officer to Event",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{petugasId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/events/{{eventId}}/officers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "events", "{{eventId}}", "officers"]
+						},
+						"description": "Assign petugas to event (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Officer from Event",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/events/{{eventId}}/officers/{{petugasId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "events", "{{eventId}}", "officers", "{{petugasId}}"]
+						},
+						"description": "Remove petugas from event (Not implemented yet)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Admin - Settings & Reports",
+			"item": [
+				{
+					"name": "Get All Settings",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/settings",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "settings"]
+						},
+						"description": "Get all system settings"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Setting (Threshold)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"value\": \"0.35\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/settings/eligibility_threshold",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "settings", "eligibility_threshold"]
+						},
+						"description": "Update system setting (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Reports",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/reports",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "reports"]
+						},
+						"description": "Get all calculation history (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event Report",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/reports/{{eventId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "reports", "{{eventId}}"]
+						},
+						"description": "Get event report with donors, rankings, and eligibility (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Dashboard Statistics",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/dashboard/statistics",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "admin", "dashboard", "statistics"]
+						},
+						"description": "Get dashboard statistics (Not implemented yet)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Petugas - Events",
+			"item": [
+				{
+					"name": "Get My Events",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/my-events",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "my-events"]
+						},
+						"description": "Get list of events assigned to current petugas"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event Detail",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}"]
+						},
+						"description": "Get event detail (only if assigned) (Not implemented yet)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. Petugas - Donor Management (MOORA)",
+			"item": [
+				{
+					"name": "Create Donor with Examination (Auto MOORA)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('donorId', response.data.donor.id);",
+									"    console.log('MOORA Result:', response.data.mooraResult);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"John Doe\",\n  \"birthDate\": \"1990-01-15\",\n  \"gender\": \"male\",\n  \"bloodType\": \"A\",\n  \"phone\": \"081234567890\",\n  \"address\": \"Jl. Example No. 123, Jakarta\",\n  \"bloodPressureSystolic\": 120,\n  \"bloodPressureDiastolic\": 80,\n  \"weight\": 57,\n  \"hemoglobin\": 13.5,\n  \"medicationFreeDays\": 7,\n  \"age\": 19,\n  \"lastSleepHours\": 5,\n  \"hasDiseaseHistory\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}/donors",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}", "donors"]
+						},
+						"description": "Register donor with examination. MOORA calculation will be triggered automatically.\n\nThis corresponds to Alternative A3 from the document (should get rank 1 with Yi = 0.446)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Donor - Alternative A1 (Document)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Alternative A1\",\n  \"birthDate\": \"1987-01-01\",\n  \"gender\": \"male\",\n  \"bloodType\": \"A\",\n  \"phone\": \"081111111111\",\n  \"address\": \"Jakarta\",\n  \"bloodPressureSystolic\": 113,\n  \"bloodPressureDiastolic\": 82,\n  \"weight\": 58,\n  \"hemoglobin\": 12.5,\n  \"medicationFreeDays\": 3,\n  \"age\": 37,\n  \"lastSleepHours\": 8,\n  \"hasDiseaseHistory\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}/donors",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}", "donors"]
+						},
+						"description": "Expected Result: Yi = 0.375, Rank = 2"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Donor - Alternative A2 (Document)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Alternative A2\",\n  \"birthDate\": \"1988-01-01\",\n  \"gender\": \"female\",\n  \"bloodType\": \"B\",\n  \"phone\": \"082222222222\",\n  \"address\": \"Jakarta\",\n  \"bloodPressureSystolic\": 150,\n  \"bloodPressureDiastolic\": 95,\n  \"weight\": 60,\n  \"hemoglobin\": 14.5,\n  \"medicationFreeDays\": 2,\n  \"age\": 36,\n  \"lastSleepHours\": 7,\n  \"hasDiseaseHistory\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}/donors",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}", "donors"]
+						},
+						"description": "Expected Result: Yi = 0.288, Rank = 5"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Donor - Alternative A3 (Document)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Alternative A3\",\n  \"birthDate\": \"2005-01-01\",\n  \"gender\": \"male\",\n  \"bloodType\": \"AB\",\n  \"phone\": \"083333333333\",\n  \"address\": \"Jakarta\",\n  \"bloodPressureSystolic\": 120,\n  \"bloodPressureDiastolic\": 80,\n  \"weight\": 57,\n  \"hemoglobin\": 13.5,\n  \"medicationFreeDays\": 7,\n  \"age\": 19,\n  \"lastSleepHours\": 5,\n  \"hasDiseaseHistory\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}/donors",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}", "donors"]
+						},
+						"description": "Expected Result: Yi = 0.446, Rank = 1 (BEST)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Donor - Alternative A4 (Document)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Alternative A4\",\n  \"birthDate\": \"1974-01-01\",\n  \"gender\": \"male\",\n  \"bloodType\": \"O\",\n  \"phone\": \"084444444444\",\n  \"address\": \"Jakarta\",\n  \"bloodPressureSystolic\": 100,\n  \"bloodPressureDiastolic\": 70,\n  \"weight\": 55,\n  \"hemoglobin\": 15.3,\n  \"medicationFreeDays\": 5,\n  \"age\": 50,\n  \"lastSleepHours\": 6,\n  \"hasDiseaseHistory\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}/donors",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}", "donors"]
+						},
+						"description": "Expected Result: Yi = 0.299, Rank = 4"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Donor - Alternative A5 (Document)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Alternative A5\",\n  \"birthDate\": \"1974-01-01\",\n  \"gender\": \"female\",\n  \"bloodType\": \"A\",\n  \"phone\": \"085555555555\",\n  \"address\": \"Jakarta\",\n  \"bloodPressureSystolic\": 110,\n  \"bloodPressureDiastolic\": 70,\n  \"weight\": 81,\n  \"hemoglobin\": 15.2,\n  \"medicationFreeDays\": 3,\n  \"age\": 50,\n  \"lastSleepHours\": 4,\n  \"hasDiseaseHistory\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}/donors",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}", "donors"]
+						},
+						"description": "Expected Result: Yi = 0.309, Rank = 3"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Donors in Event",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}/donors",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}", "donors"]
+						},
+						"description": "Get all donors in event with examination and MOORA results"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Donor Detail",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}/donors/{{donorId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}", "donors", "{{donorId}}"]
+						},
+						"description": "Get donor detail with MOORA result (Not implemented yet)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Donor with Examination",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Updated Name\",\n  \"weight\": 60,\n  \"hemoglobin\": 14.0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/petugas/events/{{eventId}}/donors/{{donorId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "petugas", "events", "{{eventId}}", "donors", "{{donorId}}"]
+						},
+						"description": "Update donor and examination, will re-trigger MOORA calculation (Not implemented yet)"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
