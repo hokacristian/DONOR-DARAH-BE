@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma migrate dev --name add_encryption_to_donor_fields)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
