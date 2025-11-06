@@ -1,5 +1,5 @@
 const prisma = require('../../config/database');
-const { calculateForExamination } = require('../../services/mooraService');
+const { evaluateSingleDonor } = require('../../services/sawService');
 const { ValidationError, NotFoundError } = require('../../utils/customErrors');
 
 exports.createDonorWithExamination = async (req, res, next) => {
@@ -82,8 +82,8 @@ exports.createDonorWithExamination = async (req, res, next) => {
       return { donor, examination };
     });
 
-    // Trigger MOORA calculation
-    const mooraResult = await calculateForExamination(result.examination.id);
+    // Trigger SAW evaluation
+    const sawResult = await evaluateSingleDonor(result.examination.id);
 
     res.status(201).json({
       success: true,
@@ -91,7 +91,7 @@ exports.createDonorWithExamination = async (req, res, next) => {
       data: {
         donor: result.donor,
         examination: result.examination,
-        mooraResult,
+        evaluation: sawResult,
       },
     });
   } catch (error) {
@@ -108,7 +108,7 @@ exports.getDonorsByEvent = async (req, res, next) => {
       include: {
         examinations: {
           include: {
-            mooraCalculations: true,
+            sawEvaluations: true,
           },
         },
       },
@@ -134,7 +134,7 @@ exports.getDonorById = async (req, res, next) => {
 
 exports.updateDonorWithExamination = async (req, res, next) => {
   try {
-    // TODO: Implement with MOORA recalculation
+    // TODO: Implement with SAW recalculation
     res.status(501).json({ message: 'Not implemented yet' });
   } catch (error) {
     next(error);

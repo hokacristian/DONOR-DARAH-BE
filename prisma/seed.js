@@ -27,7 +27,7 @@ async function main() {
     { code: 'C1', name: 'Tekanan Darah', type: 'benefit', weight: 0.25 },
     { code: 'C2', name: 'Berat Badan', type: 'benefit', weight: 0.15 },
     { code: 'C3', name: 'Hemoglobin', type: 'benefit', weight: 0.25 },
-    { code: 'C4', name: 'Tidak Konsumsi Obat', type: 'benefit', weight: 0.15 },
+    { code: 'C4', name: 'Tidak Konsumsi Obat', type: 'benefit', weight: 0.10 },
     { code: 'C5', name: 'Umur', type: 'cost', weight: 0.10 },
     { code: 'C6', name: 'Lamanya Terakhir Tidur', type: 'benefit', weight: 0.05 },
     { code: 'C7', name: 'Riwayat Penyakit', type: 'benefit', weight: 0.05 },
@@ -99,12 +99,12 @@ async function main() {
     update: {},
     create: {
       key: 'eligibility_threshold',
-      value: '0.309',
-      description: 'Threshold minimum untuk kelayakan donor darah (berdasarkan nilai Yi MOORA)',
+      value: '0.0520',
+      description: 'Threshold minimum untuk kelayakan donor darah (berdasarkan nilai Yi SAW)',
       updatedBy: admin.id,
     },
   });
-  console.log('✓ System settings created: eligibility_threshold = 0.309');
+  console.log('✓ System settings created: eligibility_threshold = 0.0520');
 
   // 5. Seed beberapa Petugas dummy (opsional)
   const petugas1 = await prisma.user.upsert({

@@ -116,7 +116,7 @@ exports.getEventReport = async (req, res, next) => {
   try {
     const { eventId } = req.params;
 
-    // Get event with all donors and their MOORA results
+    // Get event with all donors and their SAW evaluation results
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: {
@@ -124,7 +124,7 @@ exports.getEventReport = async (req, res, next) => {
           include: {
             examinations: {
               include: {
-                mooraCalculations: true,
+                sawEvaluations: true,
                 criteriaValues: {
                   include: {
                     criteria: {
@@ -149,22 +149,23 @@ exports.getEventReport = async (req, res, next) => {
     // Calculate statistics
     const totalDonors = event.donors.length;
     const donorsWithResults = event.donors.filter(
-      d => d.examinations.length > 0 && d.examinations[0].mooraCalculations.length > 0
+      d => d.examinations.length > 0 && d.examinations[0].sawEvaluations.length > 0
     );
 
     const eligibleDonors = donorsWithResults.filter(
-      d => d.examinations[0].mooraCalculations[0].isEligible
+      d => d.examinations[0].sawEvaluations[0].isEligible
     );
 
     // Get threshold
     const thresholdSetting = await prisma.systemSetting.findUnique({
       where: { key: 'eligibility_threshold' },
     });
-    const threshold = thresholdSetting ? parseFloat(thresholdSetting.value) : 0.309;
+    const threshold = thresholdSetting ? parseFloat(thresholdSetting.value) : 0.0520;
 
-    // Build ranking list
-    const rankings = donorsWithResults
-      .map(d => ({
+    // Build evaluations list (no ranking, just LAYAK/TIDAK LAYAK status)
+    const evaluations = donorsWithResults.map(d => {
+      const sawEvaluation = d.examinations[0].sawEvaluations[0];
+      return {
         donor: {
           id: d.id,
           fullName: d.fullName,
@@ -182,10 +183,15 @@ exports.getEventReport = async (req, res, next) => {
           lastSleepHours: d.examinations[0].lastSleepHours,
           hasDiseaseHistory: d.examinations[0].hasDiseaseHistory,
         },
-        mooraResult: d.examinations[0].mooraCalculations[0],
+        evaluation: {
+          preferenceValue: sawEvaluation.preferenceValue,
+          isEligible: sawEvaluation.isEligible,
+          status: sawEvaluation.isEligible ? 'LAYAK' : 'TIDAK LAYAK',
+          calculatedAt: sawEvaluation.calculatedAt,
+        },
         criteriaValues: d.examinations[0].criteriaValues,
-      }))
-      .sort((a, b) => a.mooraResult.rank - b.mooraResult.rank);
+      };
+    });
 
     res.json({
       success: true,
@@ -205,7 +211,7 @@ exports.getEventReport = async (req, res, next) => {
           notEligibleCount: donorsWithResults.length - eligibleDonors.length,
           threshold,
         },
-        rankings,
+        evaluations,
       },
     });
   } catch (error) {
@@ -229,7 +235,7 @@ exports.getDashboardStatistics = async (req, res, next) => {
       prisma.user.count({ where: { role: 'petugas' } }),
       prisma.donor.count(),
       prisma.donorExamination.count(),
-      prisma.mooraCalculation.count({ where: { isEligible: true } }),
+      prisma.sawEvaluation.count({ where: { isEligible: true } }),
     ]);
 
     // Get recent events

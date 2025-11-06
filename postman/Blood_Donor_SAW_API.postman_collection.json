@@ -1,0 +1,544 @@
+{
+	"info": {
+		"_postman_id": "blood-donor-saw-api-2025",
+		"name": "Blood Donor SAW API",
+		"description": "API Collection for Blood Donor Eligibility System using SAW (Simple Additive Weighting) Algorithm",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"admin_token\", jsonData.data.token);",
+									"    pm.environment.set(\"admin_id\", jsonData.data.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@pmi.com\",\n  \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login Petugas",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"petugas_token\", jsonData.data.token);",
+									"    pm.environment.set(\"petugas_id\", jsonData.data.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"petugas1@pmi.com\",\n  \"password\": \"petugas123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "me"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin - Events",
+			"item": [
+				{
+					"name": "Get All Events",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/events",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "events"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"event_id\", jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Donor Darah PMI Surabaya 2025\",\n  \"location\": \"Gedung PMI Surabaya, Jl. Embong Kaliasin No. 20\",\n  \"startDate\": \"2025-12-01T08:00:00.000Z\",\n  \"endDate\": \"2025-12-01T16:00:00.000Z\",\n  \"description\": \"Event donor darah rutin bulanan untuk membantu stok darah PMI\",\n  \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/events",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "events"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/events/{{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "events", "{{event_id}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Event",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Donor Darah PMI Surabaya 2025 - Updated\",\n  \"status\": \"completed\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/events/{{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "events", "{{event_id}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Event",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/events/{{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "events", "{{event_id}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Petugas to Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{petugas_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/events/{{event_id}}/officers",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "events", "{{event_id}}", "officers"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin - Reports & Settings",
+			"item": [
+				{
+					"name": "Get Dashboard Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/dashboard/statistics",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "dashboard", "statistics"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event Report (SAW Evaluations)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/reports/{{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "reports", "{{event_id}}"]
+						},
+						"description": "Get comprehensive report for an event including:\n- Event details\n- Statistics (total donors, eligible count, threshold)\n- All evaluations with LAYAK/TIDAK LAYAK status\n- No ranking (SAW method)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Settings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/settings",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "settings"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Threshold Setting",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"value\": \"0.0520\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/settings/eligibility_threshold",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "settings", "eligibility_threshold"]
+						},
+						"description": "Update eligibility threshold (must be between 0 and 1)\nDefault SAW threshold: 0.0520"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Petugas - Events",
+			"item": [
+				{
+					"name": "Get Assigned Events",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{petugas_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/petugas/events",
+							"host": ["{{base_url}}"],
+							"path": ["api", "petugas", "events"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{petugas_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/petugas/events/{{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "petugas", "events", "{{event_id}}"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Petugas - Donors (SAW Evaluation)",
+			"item": [
+				{
+					"name": "Register Donor + Examination (LAYAK)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"donor_id\", jsonData.data.donor.id);",
+									"    pm.environment.set(\"examination_id\", jsonData.data.examination.id);",
+									"    console.log('SAW Evaluation:', jsonData.data.evaluation);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{petugas_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Budi Santoso\",\n  \"birthDate\": \"1990-05-15\",\n  \"gender\": \"male\",\n  \"bloodType\": \"A\",\n  \"phone\": \"081234567890\",\n  \"address\": \"Jl. Merdeka No. 123, Surabaya\",\n  \"bloodPressureSystolic\": 120,\n  \"bloodPressureDiastolic\": 80,\n  \"weight\": 65,\n  \"hemoglobin\": 14.5,\n  \"medicationFreeDays\": 9,\n  \"age\": 35,\n  \"lastSleepHours\": 9,\n  \"hasDiseaseHistory\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/petugas/events/{{event_id}}/donors",
+							"host": ["{{base_url}}"],
+							"path": ["api", "petugas", "events", "{{event_id}}", "donors"]
+						},
+						"description": "Register donor with examination data.\nThis will trigger SAW evaluation and return:\n- preferenceValue (Yi)\n- isEligible (true/false)\n- status (LAYAK/TIDAK LAYAK)\n\nExample data results in LAYAK status (Yi >= 0.0520)"
+					},
+					"response": []
+				},
+				{
+					"name": "Register Donor + Examination (TIDAK LAYAK)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{petugas_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Siti Nurhaliza\",\n  \"birthDate\": \"1995-08-20\",\n  \"gender\": \"female\",\n  \"bloodType\": \"O\",\n  \"phone\": \"082345678901\",\n  \"address\": \"Jl. Pahlawan No. 45, Surabaya\",\n  \"bloodPressureSystolic\": 95,\n  \"bloodPressureDiastolic\": 60,\n  \"weight\": 45,\n  \"hemoglobin\": 11.5,\n  \"medicationFreeDays\": 3,\n  \"age\": 30,\n  \"lastSleepHours\": 4,\n  \"hasDiseaseHistory\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/petugas/events/{{event_id}}/donors",
+							"host": ["{{base_url}}"],
+							"path": ["api", "petugas", "events", "{{event_id}}", "donors"]
+						},
+						"description": "Example with poor health metrics that will result in TIDAK LAYAK status:\n- Low blood pressure (95/60)\n- Underweight (45 kg)\n- Low hemoglobin (11.5)\n- Has disease history\n- Low sleep hours (4)\n\nExpected Yi < 0.0520 → TIDAK LAYAK"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Donors in Event",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{petugas_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/petugas/events/{{event_id}}/donors",
+							"host": ["{{base_url}}"],
+							"path": ["api", "petugas", "events", "{{event_id}}", "donors"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin - Users",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/users",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "users"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Petugas User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"petugas3@pmi.com\",\n  \"password\": \"petugas123\",\n  \"fullName\": \"Petugas PMI 3\",\n  \"role\": \"petugas\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/users",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "users"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000"
+		}
+	]
+}
