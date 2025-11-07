@@ -1,5 +1,6 @@
 const prisma = require('../../config/database');
 const { NotFoundError, ValidationError } = require('../../utils/customErrors');
+const { decryptDonorData } = require('../../utils/encryption');
 
 // GET /api/petugas/my-events
 exports.getMyEvents = async (req, res, next) => {
@@ -75,6 +76,11 @@ exports.getEventById = async (req, res, next) => {
       if (!isAssigned) {
         throw new ValidationError('You are not assigned to this event');
       }
+    }
+
+    // Decrypt donor data
+    if (event.donors && event.donors.length > 0) {
+      event.donors = event.donors.map(donor => decryptDonorData(donor));
     }
 
     res.json({
