@@ -172,7 +172,7 @@ model DonorExamination {
   donor                   Donor                       @relation(fields: [donorId], references: [id], onDelete: Cascade)
   examiner                User                        @relation("ExaminedDonors", fields: [examinedBy], references: [id])
   criteriaValues          ExaminationCriteriaValue[]
-  sawEvaluations          SawEvaluation[]
+  mooraCalculations       MooraCalculation[]
 
   @@map("donor_examinations")
 }
@@ -194,8 +194,8 @@ model ExaminationCriteriaValue {
   @@map("examination_criteria_values")
 }
 
-// Table 9: SAW Evaluations (Simple Additive Weighting)
-model SawEvaluation {
+// Table 9: MOORA Calculations (Multi-Objective Optimization by Ratio Analysis)
+model MooraCalculation {
   id                String            @id @default(uuid())
   examinationId     String            @map("examination_id")
   preferenceValue   Float             @map("preference_value") // Yi value
@@ -207,7 +207,7 @@ model SawEvaluation {
   examination       DonorExamination  @relation(fields: [examinationId], references: [id], onDelete: Cascade)
 
   @@unique([examinationId])
-  @@map("saw_evaluations")
+  @@map("moora_calculations")
 }
 
 // Table 10: System Settings
