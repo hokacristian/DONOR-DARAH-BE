@@ -69,7 +69,7 @@ exports.getEventById = async (req, res, next) => {
           include: {
             examinations: {
               include: {
-                sawEvaluations: true,
+                mooraCalculations: true,
               },
             },
           },

@@ -1,10 +1,24 @@
 const prisma = require('../config/database');
 
 /**
- * MOORA Calculation Service
- * Implements Multi-Objective Optimization by Ratio Analysis
- * Based on the document specification for blood donor eligibility assessment
+ * MOORA (Multi-Objective Optimization by Ratio Analysis) Calculation Service
+ * Implements MOORA algorithm for blood donor eligibility assessment
+ * Based on fixed dominator values and weighted normalization
  */
+
+/**
+ * Fixed Dominator Values for each criteria
+ * These values are constants used for MOORA normalization
+ */
+const DOMINATORS = {
+  C1: 29.966648,
+  C2: 38.236109,
+  C3: 36.496575,
+  C4: 83.845095,
+  C5: 492.957402,
+  C6: 88.803153,
+  C7: 10.677078,
+};
 
 /**
  * Map raw examination values to criteria normalized values based on sub-criteria ranges
@@ -53,298 +67,87 @@ async function mapInputToCriteriaValue(criteriaId, rawValue, criteriaCode) {
 }
 
 /**
- * Build decision matrix for a single examination or multiple examinations in an event
- * @param {string} examinationId - Single examination ID (optional)
- * @param {string} eventId - Event ID to get all examinations (optional)
- * @returns {Promise<Array>} - Array of examination data with mapped criteria values
+ * Extract criteria values from a single examination
+ * @param {Object} exam - Examination object from database
+ * @param {Array} criteria - All criteria from database
+ * @returns {Array} - Array of criteria values with raw and mapped values
  */
-async function buildDecisionMatrix(examinationId = null, eventId = null) {
-  let examinations = [];
+async function extractCriteriaValues(exam, criteria) {
+  const criteriaValues = [];
 
-  if (examinationId) {
-    // Get single examination
-    const exam = await prisma.donorExamination.findUnique({
-      where: { id: examinationId },
-      include: {
-        donor: true,
-      },
-    });
-    if (exam) examinations = [exam];
-  } else if (eventId) {
-    // Get all examinations for an event
-    examinations = await prisma.donorExamination.findMany({
-      where: {
-        donor: {
-          eventId: eventId,
-        },
-      },
-      include: {
-        donor: true,
-      },
-    });
-  }
+  for (const criterion of criteria) {
+    let rawValue;
 
-  // Get all criteria with their codes
-  const criteria = await prisma.criteria.findMany({
-    orderBy: { code: 'asc' },
-  });
-
-  const matrix = [];
-
-  for (const exam of examinations) {
-    const row = {
-      examinationId: exam.id,
-      donorId: exam.donorId,
-      donorName: exam.donor.fullName,
-      values: [],
-    };
-
-    // Map examination data to criteria values (C1-C7)
-    const criteriaValues = [];
-
-    for (const criterion of criteria) {
-      let rawValue;
-
-      switch (criterion.code) {
-        case 'C1': // Tekanan Darah
-          rawValue = exam.bloodPressureSystolic;
-          break;
-        case 'C2': // Berat Badan
-          rawValue = exam.weight;
-          break;
-        case 'C3': // Hemoglobin
-          rawValue = exam.hemoglobin;
-          break;
-        case 'C4': // Tidak Konsumsi Obat (hari)
-          rawValue = exam.medicationFreeDays;
-          break;
-        case 'C5': // Umur
-          rawValue = exam.age;
-          break;
-        case 'C6': // Lamanya Terakhir Tidur
-          rawValue = exam.lastSleepHours;
-          break;
-        case 'C7': // Riwayat Penyakit
-          rawValue = exam.hasDiseaseHistory;
-          break;
-        default:
-          rawValue = 0;
-      }
-
-      const normalizedValue = await mapInputToCriteriaValue(
-        criterion.id,
-        rawValue,
-        criterion.code
-      );
-
-      criteriaValues.push({
-        criteriaId: criterion.id,
-        code: criterion.code,
-        rawValue,
-        normalizedValue,
-      });
-
-      row.values.push(normalizedValue);
+    switch (criterion.code) {
+      case 'C1': // Tekanan Darah
+        rawValue = exam.bloodPressureSystolic;
+        break;
+      case 'C2': // Berat Badan
+        rawValue = exam.weight;
+        break;
+      case 'C3': // Hemoglobin
+        rawValue = exam.hemoglobin;
+        break;
+      case 'C4': // Tidak Konsumsi Obat (hari)
+        rawValue = exam.medicationFreeDays;
+        break;
+      case 'C5': // Umur
+        rawValue = exam.age;
+        break;
+      case 'C6': // Lamanya Terakhir Tidur
+        rawValue = exam.lastSleepHours;
+        break;
+      case 'C7': // Riwayat Penyakit
+        rawValue = exam.hasDiseaseHistory;
+        break;
+      default:
+        rawValue = 0;
     }
 
-    row.criteriaDetails = criteriaValues;
-    matrix.push(row);
-  }
+    const mappedValue = await mapInputToCriteriaValue(
+      criterion.id,
+      rawValue,
+      criterion.code
+    );
 
-  return matrix;
-}
-
-/**
- * Normalize matrix using MOORA normalization formula
- * X*ij = Xij / sqrt(sum(Xij^2))
- * @param {Array} matrix - Decision matrix from buildDecisionMatrix
- * @returns {Array} - Normalized matrix
- */
-function normalizeMatrix(matrix) {
-  if (matrix.length === 0) return [];
-
-  const numCriteria = matrix[0].values.length;
-  const normalized = [];
-
-  // Calculate sqrt of sum of squares for each criterion
-  const sqrtSums = [];
-  for (let j = 0; j < numCriteria; j++) {
-    let sumOfSquares = 0;
-    for (let i = 0; i < matrix.length; i++) {
-      sumOfSquares += Math.pow(matrix[i].values[j], 2);
-    }
-    sqrtSums.push(Math.sqrt(sumOfSquares));
-  }
-
-  // Normalize each value
-  for (const row of matrix) {
-    const normalizedRow = {
-      ...row,
-      normalizedValues: [],
-    };
-
-    for (let j = 0; j < row.values.length; j++) {
-      const normalizedValue = sqrtSums[j] !== 0
-        ? row.values[j] / sqrtSums[j]
-        : 0;
-      normalizedRow.normalizedValues.push(normalizedValue);
-    }
-
-    normalized.push(normalizedRow);
-  }
-
-  return normalized;
-}
-
-/**
- * Calculate optimization value (Yi) for each alternative
- * Yi = sum(Wj * X*ij) for benefit - sum(Wj * X*ij) for cost
- * @param {Array} normalizedMatrix - Normalized matrix from normalizeMatrix
- * @returns {Promise<Array>} - Array with optimization values
- */
-async function calculateOptimization(normalizedMatrix) {
-  if (normalizedMatrix.length === 0) return [];
-
-  // Get criteria with weights and types
-  const criteria = await prisma.criteria.findMany({
-    orderBy: { code: 'asc' },
-  });
-
-  const results = [];
-
-  for (const row of normalizedMatrix) {
-    let benefitSum = 0;
-    let costSum = 0;
-
-    for (let j = 0; j < criteria.length; j++) {
-      const criterion = criteria[j];
-      const normalizedValue = row.normalizedValues[j];
-      const weightedValue = criterion.weight * normalizedValue;
-
-      if (criterion.type === 'benefit') {
-        benefitSum += weightedValue;
-      } else if (criterion.type === 'cost') {
-        costSum += weightedValue;
-      }
-    }
-
-    const optimizationValue = benefitSum - costSum;
-
-    results.push({
-      ...row,
-      benefitSum,
-      costSum,
-      optimizationValue,
+    criteriaValues.push({
+      criteriaId: criterion.id,
+      code: criterion.code,
+      rawValue,
+      mappedValue, // nilai yang sudah di-mapping (C1,C2,C3,C7) atau nilai asli (C4,C5,C6)
     });
   }
 
-  return results;
+  return criteriaValues;
 }
 
 /**
- * Rank donors based on optimization values and determine eligibility
- * @param {string} eventId - Event ID to rank all donors
- * @returns {Promise<Array>} - Ranked donors with eligibility status
+ * Normalize value using MOORA normalization with fixed dominator
+ * Formula: x'ij = xij / Dominator_j
+ * @param {number} value - The mapped criteria value
+ * @param {string} criteriaCode - The criteria code (C1-C7)
+ * @returns {number} - Normalized value
  */
-async function rankDonors(eventId) {
-  // Build decision matrix for all donors in the event
-  const matrix = await buildDecisionMatrix(null, eventId);
-
-  if (matrix.length === 0) {
-    return [];
+function normalizeMOORA(value, criteriaCode) {
+  const dominator = DOMINATORS[criteriaCode];
+  if (!dominator || dominator === 0) {
+    return 0;
   }
-
-  // Normalize matrix
-  const normalized = normalizeMatrix(matrix);
-
-  // Calculate optimization values
-  const optimized = await calculateOptimization(normalized);
-
-  // Sort by optimization value (descending - highest is best)
-  optimized.sort((a, b) => b.optimizationValue - a.optimizationValue);
-
-  // Get eligibility threshold from system settings
-  const thresholdSetting = await prisma.systemSetting.findUnique({
-    where: { key: 'eligibility_threshold' },
-  });
-  const threshold = thresholdSetting ? parseFloat(thresholdSetting.value) : 0.309;
-
-  // Assign ranks and determine eligibility
-  const ranked = optimized.map((item, index) => ({
-    ...item,
-    rank: index + 1,
-    isEligible: item.optimizationValue >= threshold,
-  }));
-
-  // Save or update MOORA calculations in database
-  for (const item of ranked) {
-    await prisma.mooraCalculation.upsert({
-      where: { examinationId: item.examinationId },
-      update: {
-        normalizedMatrix: item.normalizedValues,
-        optimizationValue: item.optimizationValue,
-        rank: item.rank,
-        isEligible: item.isEligible,
-        calculatedAt: new Date(),
-      },
-      create: {
-        examinationId: item.examinationId,
-        normalizedMatrix: item.normalizedValues,
-        optimizationValue: item.optimizationValue,
-        rank: item.rank,
-        isEligible: item.isEligible,
-      },
-    });
-
-    // Save examination criteria values
-    for (const criteriaDetail of item.criteriaDetails) {
-      // Check if criteria value already exists
-      const existingValue = await prisma.examinationCriteriaValue.findFirst({
-        where: {
-          examinationId: item.examinationId,
-          criteriaId: criteriaDetail.criteriaId,
-        },
-      });
-
-      // Convert boolean rawValue to number for database storage
-      const rawValueFloat = typeof criteriaDetail.rawValue === 'boolean'
-        ? (criteriaDetail.rawValue ? 1 : 0)
-        : parseFloat(criteriaDetail.rawValue);
-
-      if (existingValue) {
-        // Update existing record
-        await prisma.examinationCriteriaValue.update({
-          where: { id: existingValue.id },
-          data: {
-            rawValue: rawValueFloat,
-            normalizedValue: criteriaDetail.normalizedValue,
-          },
-        });
-      } else {
-        // Create new record
-        await prisma.examinationCriteriaValue.create({
-          data: {
-            examinationId: item.examinationId,
-            criteriaId: criteriaDetail.criteriaId,
-            rawValue: rawValueFloat,
-            normalizedValue: criteriaDetail.normalizedValue,
-          },
-        });
-      }
-    }
-  }
-
-  return ranked;
+  return value / dominator;
 }
 
 /**
- * Calculate MOORA for a single examination
- * This is used when a new examination is created or updated
+ * Calculate MOORA preference value (Yi) for a single donor
+ * Formula:
+ * 1. Normalisasi: x'ij = xij / Dominator_j
+ * 2. Weighted Normalized: Vij = wj × x'ij
+ * 3. Preference: Yi = Σ(Vij benefit) - Σ(Vij cost)
+ *
  * @param {string} examinationId - Examination ID
- * @returns {Promise<Object>} - Calculation result
+ * @returns {Promise<Object>} - Evaluation result with preference value and eligibility
  */
-async function calculateForExamination(examinationId) {
-  // Get the examination with donor info
+async function evaluateSingleDonor(examinationId) {
+  // Get examination with donor info
   const examination = await prisma.donorExamination.findUnique({
     where: { id: examinationId },
     include: {
@@ -356,20 +159,204 @@ async function calculateForExamination(examinationId) {
     throw new Error('Examination not found');
   }
 
-  // Recalculate all donors in the same event to update rankings
-  const results = await rankDonors(examination.donor.eventId);
+  // Get all criteria with weights and types
+  const criteria = await prisma.criteria.findMany({
+    orderBy: { code: 'asc' },
+  });
 
-  // Find and return the result for this specific examination
-  const thisResult = results.find(r => r.examinationId === examinationId);
+  // Extract criteria values from examination
+  const criteriaValues = await extractCriteriaValues(examination, criteria);
 
-  return thisResult;
+  // Calculate MOORA
+  let benefitSum = 0;
+  let costSum = 0;
+  const normalizedValues = [];
+  const weightedValues = [];
+
+  for (let i = 0; i < criteria.length; i++) {
+    const criterion = criteria[i];
+    const criteriaValue = criteriaValues[i];
+
+    // Step 1: Normalisasi MOORA (x'ij = xij / Dominator)
+    const normalized = normalizeMOORA(criteriaValue.mappedValue, criterion.code);
+    normalizedValues.push(normalized);
+
+    // Step 2: Weighted Normalized (Vij = wj × x'ij)
+    const weightedValue = criterion.weight * normalized;
+    weightedValues.push(weightedValue);
+
+    // Step 3: Sum benefit and cost
+    if (criterion.type === 'benefit') {
+      benefitSum += weightedValue;
+    } else if (criterion.type === 'cost') {
+      costSum += weightedValue;
+    }
+  }
+
+  // Step 4: Calculate preference value (Yi = benefit - cost)
+  const preferenceValue = benefitSum - costSum;
+
+  // Get eligibility threshold from system settings
+  const thresholdSetting = await prisma.systemSetting.findUnique({
+    where: { key: 'eligibility_threshold' },
+  });
+  const threshold = thresholdSetting ? parseFloat(thresholdSetting.value) : 0.0520;
+
+  // Determine eligibility
+  const isEligible = preferenceValue >= threshold;
+
+  // Save or update MOORA evaluation in database
+  const savedEvaluation = await prisma.mooraCalculation.upsert({
+    where: { examinationId: examinationId },
+    update: {
+      preferenceValue: preferenceValue,
+      isEligible: isEligible,
+      calculatedAt: new Date(),
+    },
+    create: {
+      examinationId: examinationId,
+      preferenceValue: preferenceValue,
+      isEligible: isEligible,
+    },
+  });
+
+  // Save examination criteria values
+  for (const criteriaValue of criteriaValues) {
+    // Check if criteria value already exists
+    const existingValue = await prisma.examinationCriteriaValue.findFirst({
+      where: {
+        examinationId: examinationId,
+        criteriaId: criteriaValue.criteriaId,
+      },
+    });
+
+    // Convert boolean rawValue to number for database storage
+    const rawValueFloat = typeof criteriaValue.rawValue === 'boolean'
+      ? (criteriaValue.rawValue ? 1 : 0)
+      : parseFloat(criteriaValue.rawValue);
+
+    if (existingValue) {
+      // Update existing record
+      await prisma.examinationCriteriaValue.update({
+        where: { id: existingValue.id },
+        data: {
+          rawValue: rawValueFloat,
+          normalizedValue: criteriaValue.mappedValue,
+        },
+      });
+    } else {
+      // Create new record
+      await prisma.examinationCriteriaValue.create({
+        data: {
+          examinationId: examinationId,
+          criteriaId: criteriaValue.criteriaId,
+          rawValue: rawValueFloat,
+          normalizedValue: criteriaValue.mappedValue,
+        },
+      });
+    }
+  }
+
+  // Return comprehensive evaluation result
+  return {
+    examinationId: examination.id,
+    donorId: examination.donorId,
+    preferenceValue: preferenceValue,
+    benefitSum: benefitSum,
+    costSum: costSum,
+    isEligible: isEligible,
+    status: isEligible ? 'LAYAK' : 'TIDAK LAYAK',
+    threshold: threshold,
+    criteriaValues: criteriaValues,
+    normalizedValues: normalizedValues,
+    weightedValues: weightedValues,
+    calculatedAt: savedEvaluation.calculatedAt,
+  };
+}
+
+/**
+ * Get evaluation result for a specific examination
+ * @param {string} examinationId - Examination ID
+ * @returns {Promise<Object|null>} - Saved evaluation result from database
+ */
+async function getEvaluationResult(examinationId) {
+  const evaluation = await prisma.mooraCalculation.findUnique({
+    where: { examinationId: examinationId },
+    include: {
+      examination: {
+        include: {
+          donor: true,
+        },
+      },
+    },
+  });
+
+  if (!evaluation) {
+    return null;
+  }
+
+  // Get threshold for status determination
+  const thresholdSetting = await prisma.systemSetting.findUnique({
+    where: { key: 'eligibility_threshold' },
+  });
+  const threshold = thresholdSetting ? parseFloat(thresholdSetting.value) : 0.0520;
+
+  return {
+    ...evaluation,
+    status: evaluation.isEligible ? 'LAYAK' : 'TIDAK LAYAK',
+    threshold: threshold,
+  };
+}
+
+/**
+ * Get all evaluations for an event
+ * @param {string} eventId - Event ID
+ * @returns {Promise<Array>} - Array of evaluation results
+ */
+async function getEventEvaluations(eventId) {
+  const examinations = await prisma.donorExamination.findMany({
+    where: {
+      donor: {
+        eventId: eventId,
+      },
+    },
+    include: {
+      donor: true,
+      mooraCalculations: true,
+    },
+  });
+
+  // Get threshold
+  const thresholdSetting = await prisma.systemSetting.findUnique({
+    where: { key: 'eligibility_threshold' },
+  });
+  const threshold = thresholdSetting ? parseFloat(thresholdSetting.value) : 0.0520;
+
+  return examinations.map(exam => {
+    const evaluation = exam.mooraCalculations[0]; // Only one evaluation per examination
+    if (!evaluation) {
+      return null;
+    }
+
+    return {
+      examinationId: exam.id,
+      donorId: exam.donorId,
+      donorName: exam.donor.fullName,
+      preferenceValue: evaluation.preferenceValue,
+      isEligible: evaluation.isEligible,
+      status: evaluation.isEligible ? 'LAYAK' : 'TIDAK LAYAK',
+      threshold: threshold,
+      calculatedAt: evaluation.calculatedAt,
+    };
+  }).filter(e => e !== null);
 }
 
 module.exports = {
+  evaluateSingleDonor,
+  getEvaluationResult,
+  getEventEvaluations,
   mapInputToCriteriaValue,
-  buildDecisionMatrix,
-  normalizeMatrix,
-  calculateOptimization,
-  rankDonors,
-  calculateForExamination,
+  extractCriteriaValues,
+  normalizeMOORA,
+  DOMINATORS,
 };

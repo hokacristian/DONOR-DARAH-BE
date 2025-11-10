@@ -1,15 +1,15 @@
 /**
- * Script to recalculate all SAW evaluations with new threshold
+ * Script to recalculate all MOORA evaluations with new threshold
  * Run this after changing the threshold setting
  */
 
 const { PrismaClient } = require('@prisma/client');
-const { evaluateSingleDonor } = require('../src/services/sawService');
+const { evaluateSingleDonor } = require('../src/services/mooraService');
 
 const prisma = new PrismaClient();
 
 async function recalculateAllEvaluations() {
-  console.log('🔄 Starting recalculation of all SAW evaluations...\n');
+  console.log('🔄 Starting recalculation of all MOORA evaluations...\n');
 
   try {
     // Get current threshold
@@ -23,7 +23,7 @@ async function recalculateAllEvaluations() {
     const examinations = await prisma.donorExamination.findMany({
       include: {
         donor: true,
-        sawEvaluations: true,
+        mooraCalculations: true,
       },
     });
 
@@ -33,7 +33,7 @@ async function recalculateAllEvaluations() {
     let statusChanges = 0;
 
     for (const exam of examinations) {
-      const oldEvaluation = exam.sawEvaluations[0];
+      const oldEvaluation = exam.mooraCalculations[0];
 
       console.log(`Processing: ${exam.donor.fullName} (Exam ID: ${exam.id})`);
 
