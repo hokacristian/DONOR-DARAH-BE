@@ -249,8 +249,11 @@ exports.getEventResults = async (req, res, next) => {
                   include: {
                     criteria: {
                       select: {
+                        id: true,
                         code: true,
                         name: true,
+                        weight: true,
+                        type: true,
                       },
                     },
                   },
