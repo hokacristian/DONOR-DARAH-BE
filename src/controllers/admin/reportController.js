@@ -80,31 +80,54 @@ exports.updateSetting = async (req, res, next) => {
 // GET /api/admin/reports
 exports.getAllReports = async (req, res, next) => {
   try {
-    const reports = await prisma.calculationHistory.findMany({
+    // Get all events with donor count and evaluation statistics
+    const events = await prisma.event.findMany({
       include: {
-        event: {
-          select: {
-            id: true,
-            name: true,
-            location: true,
-            startDate: true,
-            endDate: true,
+        donors: {
+          include: {
+            examinations: {
+              include: {
+                mooraCalculations: true,
+              },
+            },
           },
         },
-        generator: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
+        _count: {
+          select: { donors: true },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
 
+    // Transform events to include statistics
+    const eventReports = events.map(event => {
+      const totalDonors = event.donors.length;
+      const donorsWithResults = event.donors.filter(
+        d => d.examinations.length > 0 && d.examinations[0].mooraCalculations.length > 0
+      );
+      const eligibleDonors = donorsWithResults.filter(
+        d => d.examinations[0].mooraCalculations[0].isEligible
+      );
+
+      return {
+        id: event.id,
+        name: event.name,
+        location: event.location,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        status: event.status,
+        statistics: {
+          totalDonors,
+          totalExamined: donorsWithResults.length,
+          eligibleCount: eligibleDonors.length,
+          notEligibleCount: donorsWithResults.length - eligibleDonors.length,
+        },
+      };
+    });
+
     res.json({
       success: true,
-      data: reports,
+      data: eventReports,
     });
   } catch (error) {
     next(error);
