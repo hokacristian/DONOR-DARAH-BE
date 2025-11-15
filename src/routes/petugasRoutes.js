@@ -21,4 +21,8 @@ router.get('/events/:eventId/donors', petugasDonorController.getDonorsByEvent);
 router.get('/events/:eventId/donors/:donorId', petugasDonorController.getDonorById);
 router.put('/events/:eventId/donors/:donorId', petugasDonorController.updateDonorWithExamination);
 
+// Donor Evaluation Results Routes
+router.get('/events/:eventId/results', petugasDonorController.getEventResults);
+router.get('/events/:eventId/donors/:donorId/results', petugasDonorController.getDonorResults);
+
 module.exports = router;

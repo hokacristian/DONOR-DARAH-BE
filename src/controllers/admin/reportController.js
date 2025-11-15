@@ -1,5 +1,95 @@
 const prisma = require('../../config/database');
 const { ValidationError, NotFoundError } = require('../../utils/customErrors');
+const { decryptDonorData } = require('../../utils/encryption');
+const { normalizeMOORA } = require('../../services/mooraService');
+
+/**
+ * Calculate detailed MOORA values from criteria values
+ * @param {Array} criteriaValues - Array of criteria values with criteria info
+ * @returns {Object} - Object with benefitSum, costSum, normalizedValues, weightedValues
+ */
+function calculateDetailedMOORA(criteriaValues) {
+  let benefitSum = 0;
+  let costSum = 0;
+  const normalizedValues = [];
+  const weightedValues = [];
+  const detailedCriteriaValues = [];
+
+  criteriaValues.forEach(cv => {
+    // mappedValue is stored in normalizedValue field in database
+    const mappedValue = cv.normalizedValue;
+
+    // Normalize using MOORA formula
+    const normalized = normalizeMOORA(mappedValue, cv.criteria.code);
+    normalizedValues.push(normalized);
+
+    // Calculate weighted value
+    const weightedValue = cv.criteria.weight * normalized;
+    weightedValues.push(weightedValue);
+
+    // Sum benefit and cost
+    if (cv.criteria.type === 'benefit') {
+      benefitSum += weightedValue;
+    } else if (cv.criteria.type === 'cost') {
+      costSum += weightedValue;
+    }
+
+    // Add detailed criteria value
+    detailedCriteriaValues.push({
+      criteriaId: cv.criteria.id,
+      code: cv.criteria.code,
+      rawValue: cv.rawValue,
+      mappedValue: mappedValue,
+    });
+  });
+
+  return {
+    benefitSum,
+    costSum,
+    normalizedValues,
+    weightedValues,
+    criteriaValues: detailedCriteriaValues,
+  };
+}
+
+/**
+ * Safely decrypt donor data. If decryption fails, return data as-is (assume plain text)
+ * @param {Object} donor - Donor object with potentially encrypted fields
+ * @returns {Object} - Donor object with decrypted fields
+ */
+function safeDecryptDonorData(donor) {
+  try {
+    // Try to decrypt
+    const decrypted = decryptDonorData(donor);
+    return decrypted;
+  } catch (error) {
+    console.log('Decryption failed, assuming plain text data for donor:', donor.id);
+    // If decryption fails, assume data is plain text
+    // Handle birthDate conversion
+    let birthDate = donor.birthDate;
+    if (typeof birthDate === 'string' && birthDate.length > 50) {
+      // Looks like encrypted, but failed to decrypt - return as is
+      birthDate = donor.birthDate;
+    } else if (typeof birthDate === 'string') {
+      // Plain text ISO string
+      try {
+        birthDate = new Date(birthDate);
+      } catch {
+        birthDate = donor.birthDate;
+      }
+    }
+
+    return {
+      id: donor.id,
+      fullName: donor.fullName || '',
+      birthDate: birthDate,
+      gender: donor.gender,
+      bloodType: donor.bloodType || '',
+      phone: donor.phone || '',
+      address: donor.address || '',
+    };
+  }
+}
 
 // GET /api/admin/settings
 exports.getAllSettings = async (req, res, next) => {
@@ -187,32 +277,48 @@ exports.getEventReport = async (req, res, next) => {
 
     // Build evaluations list (no ranking, just LAYAK/TIDAK LAYAK status)
     const evaluations = donorsWithResults.map(d => {
-      const mooraEvaluation = d.examinations[0].mooraCalculations[0];
+      const examination = d.examinations[0];
+      const mooraEvaluation = examination.mooraCalculations[0];
+
+      // Decrypt donor data (safely handles both encrypted and plain text)
+      const decryptedDonor = safeDecryptDonorData({
+        id: d.id,
+        fullName: d.fullName,
+        birthDate: d.birthDate,
+        gender: d.gender,
+        bloodType: d.bloodType,
+      });
+
+      // Calculate detailed MOORA values
+      const mooraDetails = calculateDetailedMOORA(examination.criteriaValues);
+
       return {
-        donor: {
-          id: d.id,
-          fullName: d.fullName,
-          birthDate: d.birthDate,
-          gender: d.gender,
-          bloodType: d.bloodType,
-        },
+        donor: decryptedDonor,
         examination: {
-          bloodPressureSystolic: d.examinations[0].bloodPressureSystolic,
-          bloodPressureDiastolic: d.examinations[0].bloodPressureDiastolic,
-          weight: d.examinations[0].weight,
-          hemoglobin: d.examinations[0].hemoglobin,
-          medicationFreeDays: d.examinations[0].medicationFreeDays,
-          age: d.examinations[0].age,
-          lastSleepHours: d.examinations[0].lastSleepHours,
-          hasDiseaseHistory: d.examinations[0].hasDiseaseHistory,
+          id: examination.id,
+          bloodPressureSystolic: examination.bloodPressureSystolic,
+          bloodPressureDiastolic: examination.bloodPressureDiastolic,
+          weight: examination.weight,
+          hemoglobin: examination.hemoglobin,
+          medicationFreeDays: examination.medicationFreeDays,
+          age: examination.age,
+          lastSleepHours: examination.lastSleepHours,
+          hasDiseaseHistory: examination.hasDiseaseHistory,
         },
         evaluation: {
+          examinationId: examination.id,
+          donorId: d.id,
           preferenceValue: mooraEvaluation.preferenceValue,
+          benefitSum: mooraDetails.benefitSum,
+          costSum: mooraDetails.costSum,
           isEligible: mooraEvaluation.isEligible,
           status: mooraEvaluation.isEligible ? 'LAYAK' : 'TIDAK LAYAK',
+          threshold,
+          criteriaValues: mooraDetails.criteriaValues,
+          normalizedValues: mooraDetails.normalizedValues,
+          weightedValues: mooraDetails.weightedValues,
           calculatedAt: mooraEvaluation.calculatedAt,
         },
-        criteriaValues: d.examinations[0].criteriaValues,
       };
     });
 
