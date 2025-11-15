@@ -25,4 +25,7 @@ router.put('/events/:eventId/donors/:donorId', petugasDonorController.updateDono
 router.get('/events/:eventId/results', petugasDonorController.getEventResults);
 router.get('/events/:eventId/donors/:donorId/results', petugasDonorController.getDonorResults);
 
+// Report Routes with Pagination
+router.get('/reports/:eventId', petugasDonorController.getEventReportPaginated);
+
 module.exports = router;

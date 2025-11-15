@@ -526,3 +526,189 @@ exports.getDonorResults = async (req, res, next) => {
     next(error);
   }
 };
+
+// GET /api/petugas/reports/:eventId - with pagination
+exports.getEventReportPaginated = async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const offset = (page - 1) * limit;
+
+    // Get event with authorization check
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        eventOfficers: {
+          where: { userId: req.user.id },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundError('Event not found');
+    }
+
+    // Check if petugas is assigned to this event (skip if admin)
+    if (req.user.role !== 'admin' && event.eventOfficers.length === 0) {
+      throw new ValidationError('You are not assigned to this event');
+    }
+
+    // Get total count of donors with evaluations
+    const totalDonors = await prisma.donor.count({
+      where: {
+        eventId,
+        examinations: {
+          some: {
+            mooraCalculations: {
+              some: {},
+            },
+          },
+        },
+      },
+    });
+
+    // Get paginated donors with evaluations
+    const donors = await prisma.donor.findMany({
+      where: {
+        eventId,
+        examinations: {
+          some: {
+            mooraCalculations: {
+              some: {},
+            },
+          },
+        },
+      },
+      include: {
+        examinations: {
+          include: {
+            mooraCalculations: true,
+            criteriaValues: {
+              include: {
+                criteria: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                    weight: true,
+                    type: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      skip: offset,
+      take: limit,
+    });
+
+    // Get statistics (all donors, not just paginated)
+    const allDonors = await prisma.donor.findMany({
+      where: { eventId },
+      include: {
+        examinations: {
+          include: {
+            mooraCalculations: true,
+          },
+        },
+      },
+    });
+
+    const totalAllDonors = allDonors.length;
+    const donorsWithResults = allDonors.filter(
+      d => d.examinations.length > 0 && d.examinations[0].mooraCalculations.length > 0
+    );
+
+    const eligibleDonors = donorsWithResults.filter(
+      d => d.examinations[0].mooraCalculations[0].isEligible
+    );
+
+    // Get threshold
+    const thresholdSetting = await prisma.systemSetting.findUnique({
+      where: { key: 'eligibility_threshold' },
+    });
+    const threshold = thresholdSetting ? parseFloat(thresholdSetting.value) : 0.0520;
+
+    // Build evaluations list from paginated donors
+    const evaluations = donors.map(d => {
+      const examination = d.examinations[0];
+      const mooraEvaluation = examination.mooraCalculations[0];
+
+      // Decrypt donor data (safely handles both encrypted and plain text)
+      const decryptedDonor = safeDecryptDonorData({
+        id: d.id,
+        fullName: d.fullName,
+        birthDate: d.birthDate,
+        gender: d.gender,
+        bloodType: d.bloodType,
+      });
+
+      // Calculate detailed MOORA values
+      const mooraDetails = calculateDetailedMOORA(examination.criteriaValues);
+
+      return {
+        donor: decryptedDonor,
+        examination: {
+          id: examination.id,
+          bloodPressureSystolic: examination.bloodPressureSystolic,
+          bloodPressureDiastolic: examination.bloodPressureDiastolic,
+          weight: examination.weight,
+          hemoglobin: examination.hemoglobin,
+          medicationFreeDays: examination.medicationFreeDays,
+          age: examination.age,
+          lastSleepHours: examination.lastSleepHours,
+          hasDiseaseHistory: examination.hasDiseaseHistory,
+        },
+        evaluation: {
+          examinationId: examination.id,
+          donorId: d.id,
+          preferenceValue: mooraEvaluation.preferenceValue,
+          benefitSum: mooraDetails.benefitSum,
+          costSum: mooraDetails.costSum,
+          isEligible: mooraEvaluation.isEligible,
+          status: mooraEvaluation.isEligible ? 'LAYAK' : 'TIDAK LAYAK',
+          threshold,
+          criteriaValues: mooraDetails.criteriaValues,
+          normalizedValues: mooraDetails.normalizedValues,
+          weightedValues: mooraDetails.weightedValues,
+          calculatedAt: mooraEvaluation.calculatedAt,
+        },
+      };
+    });
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalDonors / limit);
+
+    res.json({
+      success: true,
+      data: {
+        event: {
+          id: event.id,
+          name: event.name,
+          location: event.location,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          status: event.status,
+        },
+        statistics: {
+          totalDonors: totalAllDonors,
+          totalExamined: donorsWithResults.length,
+          eligibleCount: eligibleDonors.length,
+          notEligibleCount: donorsWithResults.length - eligibleDonors.length,
+          threshold,
+        },
+        evaluations,
+        pagination: {
+          page,
+          limit,
+          total: totalDonors,
+          totalPages,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
