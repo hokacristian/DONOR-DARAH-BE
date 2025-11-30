@@ -8,7 +8,8 @@
       "Bash(node test-saw-calculation.js:*)",
       "Bash(rm:*)",
       "Bash(mv:*)",
-      "Bash(npx prisma migrate dev:*)"
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(node -c:*)"
     ],
     "deny": [],
     "ask": []

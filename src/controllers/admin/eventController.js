@@ -183,6 +183,57 @@ exports.updateEvent = async (req, res, next) => {
       }
     }
 
+    // Check for officer conflicts if date is being changed
+    if (updateData.startDate || updateData.endDate) {
+      const newStartDate = updateData.startDate || existingEvent.startDate;
+      const newEndDate = updateData.endDate || existingEvent.endDate;
+
+      // Get all officers assigned to this event
+      const assignedOfficers = await prisma.eventOfficer.findMany({
+        where: { eventId: id },
+        select: { userId: true },
+      });
+
+      // Check each officer for conflicts with other events
+      for (const officer of assignedOfficers) {
+        const officerEvents = await prisma.eventOfficer.findMany({
+          where: {
+            userId: officer.userId,
+            eventId: { not: id }, // Exclude current event
+          },
+          include: {
+            event: {
+              select: {
+                id: true,
+                name: true,
+                startDate: true,
+                endDate: true,
+              },
+            },
+          },
+        });
+
+        // Check for date overlap with existing assignments
+        for (const assignment of officerEvents) {
+          const existingEvent = assignment.event;
+
+          // Check if dates overlap: newStart <= existingEvent.end AND existingEvent.start <= newEnd
+          if (newStartDate <= existingEvent.endDate && existingEvent.startDate <= newEndDate) {
+            const officerInfo = await prisma.user.findUnique({
+              where: { id: officer.userId },
+              select: { fullName: true },
+            });
+
+            throw new ValidationError(
+              `Officer "${officerInfo.fullName}" is already assigned to event "${existingEvent.name}" ` +
+              `(${existingEvent.startDate.toISOString().split('T')[0]} - ${existingEvent.endDate.toISOString().split('T')[0]}) ` +
+              `which overlaps with the new date. Please remove the officer first or change the date.`
+            );
+          }
+        }
+      }
+    }
+
     const event = await prisma.event.update({
       where: { id },
       data: updateData,
@@ -383,6 +434,35 @@ exports.assignOfficer = async (req, res, next) => {
 
     if (existing) {
       throw new ValidationError('Officer already assigned to this event');
+    }
+
+    // Check if officer is assigned to another event on the same date(s)
+    const officerEvents = await prisma.eventOfficer.findMany({
+      where: { userId: userId },
+      include: {
+        event: {
+          select: {
+            id: true,
+            name: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
+      },
+    });
+
+    // Check for date overlap with existing assignments
+    for (const assignment of officerEvents) {
+      const existingEvent = assignment.event;
+
+      // Check if dates overlap: event.start <= existingEvent.end AND existingEvent.start <= event.end
+      if (event.startDate <= existingEvent.endDate && existingEvent.startDate <= event.endDate) {
+        throw new ValidationError(
+          `Officer is already assigned to event "${existingEvent.name}" ` +
+          `(${existingEvent.startDate.toISOString().split('T')[0]} - ${existingEvent.endDate.toISOString().split('T')[0]}) ` +
+          `which overlaps with this event's date`
+        );
+      }
     }
 
     const assignment = await prisma.eventOfficer.create({
