@@ -9,7 +9,8 @@
       "Bash(rm:*)",
       "Bash(mv:*)",
       "Bash(npx prisma migrate dev:*)",
-      "Bash(node -c:*)"
+      "Bash(node -c:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

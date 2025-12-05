@@ -264,7 +264,7 @@ exports.deleteEvent = async (req, res, next) => {
       where: { id },
       include: {
         _count: {
-          select: { donors: true },
+          select: { donors: true, eventOfficers: true },
         },
       },
     });
@@ -273,12 +273,17 @@ exports.deleteEvent = async (req, res, next) => {
       throw new NotFoundError('Event not found');
     }
 
-    // Warning if event has donors
-    if (event._count.donors > 0) {
-      throw new ValidationError(
-        `Cannot delete event with ${event._count.donors} donors. Please remove all donors first.`
-      );
+    // If event is NOT completed, check for donors (prevent deletion)
+    if (event.status !== 'completed') {
+      if (event._count.donors > 0) {
+        throw new ValidationError(
+          `Cannot delete event with ${event._count.donors} donors. Please remove all donors first or set event status to completed.`
+        );
+      }
     }
+
+    // Event with status "completed" can always be deleted (regardless of donors)
+    // This allows cleanup of completed events
 
     await prisma.event.delete({
       where: { id },
@@ -299,6 +304,9 @@ exports.updateEventStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status } = req.body;
 
+    // Log incoming request for debugging
+    console.log('[updateEventStatus] Request received:', { id, status });
+
     if (!status || !['draft', 'active', 'completed'].includes(status)) {
       throw new ValidationError('Status must be one of: draft, active, completed');
     }
@@ -311,15 +319,22 @@ exports.updateEventStatus = async (req, res, next) => {
       throw new NotFoundError('Event not found');
     }
 
+    console.log('[updateEventStatus] Current event status:', event.status);
+
     // Validate status transition
     // draft → active → completed (one way flow)
     const validTransitions = {
-      draft: ['active'],
+      draft: ['active', 'completed'],
       active: ['completed'],
       completed: [], // Cannot change from completed
     };
 
     if (!validTransitions[event.status].includes(status)) {
+      console.log('[updateEventStatus] Invalid transition:', {
+        from: event.status,
+        to: status,
+        validOptions: validTransitions[event.status],
+      });
       throw new ValidationError(
         `Invalid status transition from ${event.status} to ${status}. ` +
         `Valid transitions: ${validTransitions[event.status].join(', ') || 'none'}`
@@ -336,12 +351,19 @@ exports.updateEventStatus = async (req, res, next) => {
       },
     });
 
+    console.log('[updateEventStatus] Event updated successfully:', {
+      id: updatedEvent.id,
+      oldStatus: event.status,
+      newStatus: updatedEvent.status,
+    });
+
     res.json({
       success: true,
       message: `Event status updated to ${status}`,
       data: updatedEvent,
     });
   } catch (error) {
+    console.error('[updateEventStatus] Error:', error.message);
     next(error);
   }
 };
