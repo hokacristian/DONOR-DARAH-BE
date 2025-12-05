@@ -168,6 +168,17 @@ exports.deletePetugas = async (req, res, next) => {
     const petugas = await prisma.user.findUnique({
       where: { id },
       include: {
+        eventOfficers: {
+          include: {
+            event: {
+              select: {
+                id: true,
+                name: true,
+                status: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             eventOfficers: true,
@@ -185,13 +196,6 @@ exports.deletePetugas = async (req, res, next) => {
       throw new ValidationError('User is not a petugas');
     }
 
-    // Check if petugas is assigned to any events
-    if (petugas._count.eventOfficers > 0) {
-      throw new ValidationError(
-        `Cannot delete petugas who is assigned to ${petugas._count.eventOfficers} event(s). Please remove assignments first.`
-      );
-    }
-
     // Check if petugas has registered donors
     if (petugas._count.registeredDonors > 0) {
       throw new ValidationError(
@@ -199,13 +203,45 @@ exports.deletePetugas = async (req, res, next) => {
       );
     }
 
+    // Check if petugas is assigned to active or draft events
+    const activeAssignments = petugas.eventOfficers.filter(
+      eo => eo.event.status === 'active' || eo.event.status === 'draft'
+    );
+
+    if (activeAssignments.length > 0) {
+      const eventNames = activeAssignments.map(eo => eo.event.name).join(', ');
+      throw new ValidationError(
+        `Cannot delete petugas who is assigned to ${activeAssignments.length} active/draft event(s): ${eventNames}. Please remove assignments first.`
+      );
+    }
+
+    // Auto-remove from completed events
+    const completedAssignments = petugas.eventOfficers.filter(
+      eo => eo.event.status === 'completed'
+    );
+
+    if (completedAssignments.length > 0) {
+      console.log(`[deletePetugas] Auto-removing petugas from ${completedAssignments.length} completed event(s)`);
+      await prisma.eventOfficer.deleteMany({
+        where: {
+          userId: id,
+          event: {
+            status: 'completed',
+          },
+        },
+      });
+    }
+
+    // Delete petugas
     await prisma.user.delete({
       where: { id },
     });
 
     res.json({
       success: true,
-      message: 'Petugas deleted successfully',
+      message: completedAssignments.length > 0
+        ? `Petugas deleted successfully (auto-removed from ${completedAssignments.length} completed event(s))`
+        : 'Petugas deleted successfully',
     });
   } catch (error) {
     next(error);
