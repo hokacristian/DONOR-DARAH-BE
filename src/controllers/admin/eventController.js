@@ -158,11 +158,6 @@ exports.updateEvent = async (req, res, next) => {
       throw new NotFoundError('Event not found');
     }
 
-    // Cannot update completed event
-    if (existingEvent.status === 'completed') {
-      throw new ValidationError('Cannot update completed event');
-    }
-
     // Validate dates if provided
     const updateData = {};
     if (name) updateData.name = name;
@@ -304,9 +299,6 @@ exports.updateEventStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    // Log incoming request for debugging
-    console.log('[updateEventStatus] Request received:', { id, status });
-
     if (!status || !['draft', 'active', 'completed'].includes(status)) {
       throw new ValidationError('Status must be one of: draft, active, completed');
     }
@@ -319,28 +311,7 @@ exports.updateEventStatus = async (req, res, next) => {
       throw new NotFoundError('Event not found');
     }
 
-    console.log('[updateEventStatus] Current event status:', event.status);
-
-    // Validate status transition
-    // draft → active → completed (one way flow)
-    const validTransitions = {
-      draft: ['active', 'completed'],
-      active: ['completed'],
-      completed: [], // Cannot change from completed
-    };
-
-    if (!validTransitions[event.status].includes(status)) {
-      console.log('[updateEventStatus] Invalid transition:', {
-        from: event.status,
-        to: status,
-        validOptions: validTransitions[event.status],
-      });
-      throw new ValidationError(
-        `Invalid status transition from ${event.status} to ${status}. ` +
-        `Valid transitions: ${validTransitions[event.status].join(', ') || 'none'}`
-      );
-    }
-
+    // Allow all status transitions (admin has full control)
     const updatedEvent = await prisma.event.update({
       where: { id },
       data: { status },
@@ -351,19 +322,12 @@ exports.updateEventStatus = async (req, res, next) => {
       },
     });
 
-    console.log('[updateEventStatus] Event updated successfully:', {
-      id: updatedEvent.id,
-      oldStatus: event.status,
-      newStatus: updatedEvent.status,
-    });
-
     res.json({
       success: true,
       message: `Event status updated to ${status}`,
       data: updatedEvent,
     });
   } catch (error) {
-    console.error('[updateEventStatus] Error:', error.message);
     next(error);
   }
 };
